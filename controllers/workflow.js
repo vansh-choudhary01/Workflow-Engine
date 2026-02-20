@@ -1,0 +1,128 @@
+import { executor, planner } from '../services/initilizer';
+import Workflow from '../models/Workflow';
+
+export const createWorkflow = async (req, res) => {
+    try {
+        const { userId, prompt } = req.body;
+        // const plan = await planner.plan(prompt);
+
+        const plan = {
+            steps: [
+                { tool: 'search', input: { query: 'what to wear for this location' }, as: 'search1' },
+                { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
+                { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
+                { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
+                { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
+            ]
+        }
+
+        const workflow = await Workflow.create({
+            userId,
+            prompt,
+            steps: plan?.steps,
+            status: 'waiting_approval',
+            logs: [
+                { status: 'info', message: 'Workflow created', timestamp: Date.now() },
+                { status: 'info', message: 'Workflow waiting for approval', timestamp: Date.now() }
+            ]
+        });
+
+        return res.status(201).json({
+            workflowId: workflow._id,
+            status: workflow.status,
+            steps: workflow.steps,
+        });
+    } catch (err) {
+        console.error('Error in workflow creation:', err);
+        return res.status(500).send('Internal server error');
+    }
+};
+
+export const rephraseWorkflowSteps = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { prompt } = req.body;
+        const workflow = await Workflow.findById(id);
+        if (!workflow) {
+            return res.status(404).send('Workflow not found');
+        }
+        if (workflow.status !== 'waiting_approval') {
+            return res.status(400).send('Workflow is not in a state that allows rephrasing');
+        }
+
+        const plan = await planner.plan(workflow.prompt, false, true, workflow.logs, prompt, workflow.steps);
+        if (!plan) {
+            return res.status(400).send('Planning failed');
+        }   
+        workflow.steps = plan.steps;
+        workflow.logs.push({ status: 'info', message: 'Workflow steps rephrased by user', timestamp: Date.now() });
+        await workflow.save();
+        return res.status(200).json({
+            workflowId: workflow._id,
+            status: workflow.status,
+            steps: workflow.steps,
+        });
+    } catch (err) {
+        console.error('Error in workflow rephrasing:', err);
+        return res.status(500).send('Internal server error');
+    }
+};
+
+export const approveWorkflow = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const workflow = await Workflow.findById(id);
+        if (!workflow) {
+            return res.status(404).send('Workflow not found');
+        }
+        workflow.status = 'processing';
+        workflow.logs.push({ status: 'info', message: 'Workflow approved by user', timestamp: Date.now() });
+        workflow.logs.push({ status: 'info', message: 'Workflow waiting for execution', timestamp: Date.now() });
+        workflow.logs.push({ status: 'info', message: 'Workflow execution started', timestamp: Date.now() });
+        await workflow.save();
+
+        const exicution = await executor.executePlan(workflow.userId, workflow.steps);
+        if (exicution.ok === false) {
+            workflow.status = 'failed';
+            workflow.logs.push({ status: 'error', message: 'Workflow execution failed', timestamp: Date.now() });
+            await workflow.save();
+            return res.status(500).json({
+                workflowId: workflow._id,
+                status: workflow.status,
+                error: exicution.error,
+            });
+        }
+
+        workflow.status = 'completed';
+        workflow.logs.push({ status: 'success', message: 'Workflow execution completed', timestamp: Date.now() });
+        await workflow.save();
+        return res.status(200).json({
+            workflowId: workflow._id,
+            status: workflow.status,
+            steps: workflow.steps,
+        });
+    } catch (err) {
+        console.error('Error in workflow approval:', err);
+        return res.status(500).send('Internal server error');
+    }
+};
+
+export const rejectWorkflow = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const workflow = await Workflow.findById(id);
+        if (!workflow) {
+            return res.status(404).send('Workflow not found');
+        }
+        workflow.status = 'rejected';
+        workflow.logs.push({ status: 'info', message: 'Workflow rejected by user', timestamp: Date.now() });
+        await workflow.save();
+        return res.status(200).json({
+            workflowId: workflow._id,
+            status: workflow.status,
+        });
+    } catch (err) {
+        console.error('Error in workflow rejection:', err);
+        return res.status(500).send('Internal server error');
+    }
+};

@@ -4,7 +4,7 @@ const StepSchema = new mongoose.Schema({
     tool: {
         type: String,
         required: true
-    }, 
+    },
     input: {
         type: Object,
         required: true
@@ -53,6 +53,29 @@ const WorkflowSchema = new mongoose.Schema({
             "rejected"
         ],
         default: "created"
+    },
+    logs: {
+        type: [{
+            status: {
+                type: String,
+                enum: [
+                    "info",
+                    "warning",
+                    "error",
+                    "success"
+                ],
+                default: "info"
+            },
+            message: {
+                type: String,
+                required: true
+            },
+            timestamp: {
+                type: Date,
+                default: Date.now
+            }
+        }],
+        default: []
     }
 }, { timestemps: true });
 

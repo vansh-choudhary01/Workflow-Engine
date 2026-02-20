@@ -18,6 +18,14 @@ app.get('/', (req, res) => {
 
 app.use("/api", apiRoutes);
 
+app.use((err, req, res, next) => {
+  return res.status(500).json({ message: err.message });
+});
+
+app.use((req, res, next) => {
+  return res.status(404).json({ message: 'Not found' });
+});
+
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
