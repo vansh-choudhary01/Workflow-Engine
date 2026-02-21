@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, use } from 'react';
 import './App.css';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:4000';
@@ -9,6 +9,7 @@ function App() {
   const [workflow, setWorkflow] = useState(null);
   const [rephraseText, setRephraseText] = useState('');
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef(null);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -101,13 +102,28 @@ function App() {
     return () => { if (timer) clearInterval(timer); };
   }, [workflow]);
 
+  useEffect(() => {
+    if (!loading || !workflow) return;
+    let timer = null;
+    if (workflow.status === 'processing' || workflow.status === 'waiting_approval') {
+      timer = setInterval(() => fetchWorkflow(workflow.id), 500);
+    }
+    return () => { if (timer) clearInterval(timer); };
+  }, [loading, workflow]);
+
   const handleRephrase = () => {
     if (!rephraseText) return alert('Enter rephrase prompt');
     postAction('rephrase', { prompt: rephraseText });
   };
 
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [workflow, loading]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div ref={containerRef} className="h-screen overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -204,7 +220,7 @@ function App() {
             {/* Logs Section */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-3">Activity Logs</h3>
-              <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 max-h-64 overflow-y-auto">
+              <div className="bg-slate-50 rounded-lg border border-slate-200 p-4">
                 {workflow.logs && workflow.logs.length > 0 ? (
                   <div className="space-y-2">
                     {workflow.logs.map((log, i) => (
@@ -220,6 +236,11 @@ function App() {
                         </div>
                       </div>
                     ))}
+                    {loading && (
+                      <div className="text-sm text-blue-600 font-medium">
+                        Loading latest logs...
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-slate-500">No logs yet</p>
