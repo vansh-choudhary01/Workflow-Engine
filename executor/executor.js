@@ -8,7 +8,7 @@ class Executor {
     async executePlan(userId, steps) {
         const state = {};
         for (const step of steps || []) {
-            const tool = this.registry.get(step.tool);
+            const tool = this.registry?.get(step.tool);
             if (!tool) {
                 return { ok: false, error: `tool_not_registered: ${step.tool}` };
             }

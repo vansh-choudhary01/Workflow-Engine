@@ -1,5 +1,26 @@
 import mongoose from 'mongoose';
 
+const logSchema = new mongoose.Schema({
+    status: {
+        type: String,
+        enum: [
+            "info",
+            "warning",
+            "error",
+            "success"
+        ],
+        default: "info"
+    },
+    message: {
+        type: String,
+        required: true
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
 const StepSchema = new mongoose.Schema({
     tool: {
         type: String,
@@ -31,7 +52,7 @@ const StepSchema = new mongoose.Schema({
 
 const WorkflowSchema = new mongoose.Schema({
     userId: {
-        type: Number,
+        type: String,
         required: true
     },
     prompt: {
@@ -55,28 +76,9 @@ const WorkflowSchema = new mongoose.Schema({
         default: "created"
     },
     logs: {
-        type: [{
-            status: {
-                type: String,
-                enum: [
-                    "info",
-                    "warning",
-                    "error",
-                    "success"
-                ],
-                default: "info"
-            },
-            message: {
-                type: String,
-                required: true
-            },
-            timestamp: {
-                type: Date,
-                default: Date.now
-            }
-        }],
+        type: [logSchema],
         default: []
     }
-}, { timestemps: true });
+}, { timestamps: true });
 
 export default mongoose.model("Workflow", WorkflowSchema);
