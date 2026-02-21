@@ -14,8 +14,16 @@ class Planner {
         console.log("REATTEMPT:", reattempt);
         console.log("REPHRASE:", rephrase);
 
+        let toolNames;
+        if (Array.isArray(this.availableTools)) {
+            toolNames = this.availableTools.map(t => t.name).join(", ");
+        } else if (this.availableTools instanceof Map) {
+            toolNames = Array.from(this.availableTools.keys()).join(", ");
+        }
+        console.log("TOOLNAMES:", toolNames);
+
         if (rephrase) {
-            prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You previously planned a sequence of tools to execute to answer the user's request, but the user said ${userNewRequest} and rephrased the request. Here are the last steps you planned: ${JSON.stringify(lastSteps)}. You need to plan a new sequence of tools to execute to answer the user's new request. The tools you can use are: ${this.availableTools.join(', ')}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's new request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
+            prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You previously planned a sequence of tools to execute to answer the user's request, but the user said ${userNewRequest} and rephrased the request. Here are the last steps you planned: ${JSON.stringify(lastSteps)}. You need to plan a new sequence of tools to execute to answer the user's new request. The tools you can use are: ${toolNames}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's new request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
         
         and here is an example plan:
         { steps: [
@@ -27,7 +35,7 @@ class Planner {
             { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
         ]}`;
         } else if (reattempt) {
-            prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You previously attempted to plan a sequence of tools to execute to answer the user's request, but it failed. Here are the last outputs from your previous attempt: ${JSON.stringify(lastOutputs)}. You need to plan a new sequence of tools to execute to answer the user's request. The tools you can use are: ${this.availableTools.join(', ')}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
+            prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You previously attempted to plan a sequence of tools to execute to answer the user's request, but it failed. Here are the last outputs from your previous attempt: ${JSON.stringify(lastOutputs)}. You need to plan a new sequence of tools to execute to answer the user's request. The tools you can use are: ${toolNames}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
             and if you cannot improve the plan, return "null".
         
         and here is an example plan:
@@ -40,7 +48,7 @@ class Planner {
             { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
         ]}`;
         } else {
-            prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You need to plan a sequence of tools to execute to answer the user's request. The tools you can use are: ${this.availableTools.join(', ')}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
+            prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You need to plan a sequence of tools to execute to answer the user's request. The tools you can use are: ${toolNames}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
         
         and here is an example plan:
         { steps: [
@@ -54,17 +62,17 @@ class Planner {
     `;
         }
 
-        // const plan = await this.callLLM(prompt);
+        const plan = await this.callLLM(prompt);
         // dummy for development
-        const plan = {
-            steps: [
-                { tool: 'search', input: { query: 'what to wear for this location' }, as: 'search1' },
-                { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
-                { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
-                { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
-                { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
-            ]
-        }
+        // const plan = {
+        //     steps: [
+        //         { tool: 'search', input: { query: 'what to wear for this location' }, as: 'search1' },
+        //         { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
+        //         { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
+        //         { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
+        //         { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
+        //     ]
+        // }
         return plan || null;
 
         // default: do a web search

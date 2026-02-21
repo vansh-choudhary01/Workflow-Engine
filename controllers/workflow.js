@@ -4,17 +4,17 @@ import Workflow from '../models/Workflow.js';
 export const createWorkflow = async (req, res) => {
     try {
         const { userId, prompt } = req.body;
-        // const plan = await planner.plan(prompt);
+        const plan = await planner.plan(prompt);
 
-        const plan = {
-            steps: [
-                // { tool: 'search', input: { query: 'what to wear for this location' }, as: 'search1' },
-                // { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
-                // { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
-                // { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
-                { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
-            ]
-        }
+        // const plan = {
+        //     steps: [
+        //         // { tool: 'search', input: { query: 'what to wear for this location' }, as: 'search1' },
+        //         // { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
+        //         // { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
+        //         // { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
+        //         { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
+        //     ]
+        // }
 
         const workflow = await Workflow.create({
             userId,
@@ -33,6 +33,7 @@ export const createWorkflow = async (req, res) => {
                 workflowId: workflow._id,
                 status: workflow.status,
                 steps: workflow.steps,
+                logs: workflow.logs,
             }
         });
     } catch (err) {
@@ -66,6 +67,7 @@ export const rephraseWorkflowSteps = async (req, res) => {
                 workflowId: workflow._id,
                 status: workflow.status,
                 steps: workflow.steps,
+                logs: workflow.logs,
             }
         });
     } catch (err) {
@@ -102,6 +104,7 @@ export const approveWorkflow = async (req, res) => {
                     workflowId: workflow._id,
                     status: workflow.status,
                     error: exicution.error,
+                    logs: workflow.logs,
                 }
             });
         }
@@ -115,6 +118,7 @@ export const approveWorkflow = async (req, res) => {
                 workflowId: workflow._id,
                 status: workflow.status,
                 steps: workflow.steps,
+                logs: workflow.logs,
             }
         });
     } catch (err) {
@@ -138,10 +142,31 @@ export const rejectWorkflow = async (req, res) => {
             data: {
                 workflowId: workflow._id,
                 status: workflow.status,
+                logs: workflow.logs,
             },
         });
     } catch (err) {
         console.error('Error in workflow rejection:', err);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+export const getWorkflow = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const workflow = await Workflow.findById(id);
+        if (!workflow) return res.status(404).json({ success: false, message: 'Workflow not found' });
+        return res.status(200).json({
+            success: true,
+            data: {
+                workflowId: workflow._id,
+                status: workflow.status,
+                steps: workflow.steps,
+                logs: workflow.logs,
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching workflow:', err);
         return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };

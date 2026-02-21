@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
+import cors from 'cors';
 import apiRoutes from './routes/index.js';
 
 const app = express();
@@ -12,6 +13,7 @@ function connectDB() {
 }
 connectDB();
 
+app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
