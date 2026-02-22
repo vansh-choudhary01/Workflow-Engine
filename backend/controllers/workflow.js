@@ -4,17 +4,18 @@ import Workflow from '../models/Workflow.js';
 export const createWorkflow = async (req, res) => {
     try {
         const { userId, prompt } = req.body;
-        const plan = await planner.plan(prompt);
+        // const plan = await planner.plan(prompt);
 
-        // const plan = {
-        //     steps: [
-        //         // { tool: 'search', input: { query: 'what to wear for this location' }, as: 'search1' },
-        //         // { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
-        //         // { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
-        //         // { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
-        //         { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
-        //     ]
-        // }
+        const plan = {
+            steps: [
+                { tool: 'web_search', input: { query: 'what is apple ?' }, as: 'search1' },
+                { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
+                { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
+                { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
+                { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' },
+                { tool: 'send_whatsapp', input: { to: '+1234567890', message: 'Planning failed' }, as: 'whatsapp1' }
+            ]
+        } 
 
         const workflow = await Workflow.create({
             userId,
@@ -100,12 +101,7 @@ export const approveWorkflow = async (req, res) => {
             await workflow.save();
             return res.status(500).json({
                 success: false,
-                data: {
-                    workflowId: workflow._id,
-                    status: workflow.status,
-                    error: exicution.error,
-                    logs: workflow.logs,
-                }
+                message: `Workflow execution failed : ${exicution.error}`,
             });
         }
 
@@ -138,7 +134,7 @@ export const rejectWorkflow = async (req, res) => {
         workflow.logs.push({ status: 'info', message: 'Workflow rejected by user', timestamp: Date.now() });
         await workflow.save();
         return res.status(200).json({
-            success: false,
+            success: true,
             data: {
                 workflowId: workflow._id,
                 status: workflow.status,
