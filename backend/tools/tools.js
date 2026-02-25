@@ -1,14 +1,22 @@
 import nodemailer from 'nodemailer';
 import { config as serpConfig, getJson as serpWebSearch } from 'serpapi';
+
+import { spawn } from 'child_process';
+import { runWithQueue } from './terminalQueue.js';
+
+import fs from 'fs';
+import { Client } from 'ssh2';
+import { getNextPort } from '../utils/portManager.js';
+
+
 // import { whatsapp } from 'node-whatsapp';
 
 // whatsapp.login('yourphonenumber@whatsapp.net', 'yourpassword');
 
 class Tool {
-    constructor(name, description, permission = null) {
+    constructor(name, description) {
         this.name = name;
         this.description = description;
-        this.permission = permission; // e.g., "weather:read", "db:read"
     }
     async call(input, context = {}) {
         throw new Error('call() not implemented for ' + this.name);
@@ -18,7 +26,6 @@ class Tool {
 class ToolRegistry {
     constructor() {
         this.tools = new Map();
-        this.permissions = new Map(); // userId => Set(permission)
     }
     register(tool) {
         this.tools.set(tool.name, tool);
@@ -26,21 +33,11 @@ class ToolRegistry {
     get(name) {
         return this.tools.get(name);
     }
-    // simple permission check
-    userHasPermission(userId, permission) {
-        if (!permission) return true; // public tool
-        const set = this.permissions.get(userId);
-        return set && set.has(permission);
-    }
-    grant(userId, permission) {
-        if (!this.permissions.has(userId)) this.permissions.set(userId, new Set());
-        this.permissions.get(userId).add(permission);
-    }
 }
 
 class EmailSenderTool extends Tool {
     constructor() {
-        super('send_email', 'Send an email to a specified address with subject and body', 'email:send');
+        super('send_email', 'Send an email to a specified address with subject and body');
         this.transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -60,6 +57,7 @@ class EmailSenderTool extends Tool {
             });
             return { ok: true, result };
         } catch (err) {
+            console.error('Error in EmailSenderTool:', err);
             return { ok: false, error: err.message };
         }
     }
@@ -67,7 +65,7 @@ class EmailSenderTool extends Tool {
 
 class WebSearchTool extends Tool {
     constructor() {
-        super('web_search', 'Search the web for a query and return the top 3 results', 'web:search');
+        super('web_search', 'Search the web for a query and return the top 3 results');
 
         serpConfig.api_key = process.env.SERP_API_KEY;
         serpConfig.timeout = 60000;
@@ -82,10 +80,6 @@ class WebSearchTool extends Tool {
                 q: query
             });
 
-            // Debug
-            console.log('WebSearchTool response received');
-
-            // IMPORTANT FIX
             const results = response.organic_results || [];
 
             const formatted = results.slice(0, 3).map(r => ({
@@ -112,7 +106,7 @@ class WebSearchTool extends Tool {
 
 class WhatsAppSenderTool extends Tool {
     constructor() {
-        super('send_whatsapp', 'Send a WhatsApp message to a specified phone number with message content', 'whatsapp:send');
+        super('send_whatsapp', 'Send a WhatsApp message to a specified phone number with message content');
     }
     async call(input) {
         try {
@@ -129,8 +123,6 @@ class WhatsAppSenderTool extends Tool {
     }
 }
 
-import { spawn } from 'child_process';
-import { runWithQueue } from './terminalQueue';
 // 5) Terminal Tool: execute terminal commands (use with caution)
 
 const forbidden = ['rm', 'sudo', 'shutdown', 'reboot'];
@@ -140,7 +132,7 @@ function validateCmd(cmd) {
 
 class TerminalTool extends Tool {
     constructor() {
-        super('terminal', 'Provide and exicute terminal commands (linux/mac/windows).', 'terminal:exec');
+        super('terminal', 'Provide and execute terminal commands (linux/mac/windows).');
     }
 
     async call(input) {
@@ -162,40 +154,6 @@ class TerminalTool extends Tool {
             return { ok: false, error: 'exec_error: ' + err.message };
         }
     }
-}
-
-function runTerminalCommand(cmd) {
-    return new Promise((resolve, reject) => {
-        // split command for spawn
-        const parts = cmd.split(' ');
-        const command = parts[0];
-        const args = parts.slice(1);
-
-        const child = spawn(command, args, { shell: true });
-
-        let stdout = '';
-        let stderr = '';
-
-        child.stdout.on('data', (data) => {
-            stdout += data.toString();
-        });
-
-        child.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-
-        child.on('close', (code) => {
-            resolve({
-                stdout,
-                stderr,
-                code
-            });
-        });
-
-        child.on('error', (err) => {
-            reject(err);
-        });
-    });
 }
 
 function runInDocker(cmd, timeout = 10000) {
@@ -246,5 +204,92 @@ function runInDocker(cmd, timeout = 10000) {
     })
 }
 
+class DeployTool extends Tool {
+    constructor() {
+        super('deploy_repo', 'Deploy a GitHub repository to preconfigured EC2 instance');
+    }
 
-export { Tool, ToolRegistry, EmailSenderTool, WhatsAppSenderTool, WebSearchTool, TerminalTool };
+    async call(input) {
+        const { repoUrl, port = getNextPort() } = input;
+
+        if (!repoUrl) {
+            return { ok: false, error: 'repoUrl required' };
+        } else if (!repoUrl.startsWith('https://github.com/')) {
+            return { ok: false, error: 'Only GitHub repos allowed' };
+        }
+
+        const appName = `app-${Date.now()}`;
+
+        const commands = [
+            'mkdir -p ~/apps',
+            'cd ~/apps',
+            `git clone ${repoUrl} ${appName}`,
+            `cd ${appName}`,
+            `docker build -t ${appName} .`,
+            // change: added container name
+            `docker run -d --name ${appName} -p ${port}:3000 ${appName}`
+        ];
+
+        try {
+            const result = await runSSHCommands(commands);
+
+            return {
+                ok: true,
+                result: {
+                    appName,
+                    url: `http://${process.env.EC2_HOST}:${port}`,
+                    logs: result.output,
+                }
+            };
+        } catch (err) {
+            return { ok: false, error: err.message };
+        }
+    }
+}
+
+
+function runSSHCommands(commands) {
+    return new Promise((resolve, reject) => {
+        const conn = new Client();
+
+        conn.on('ready', () => {
+            conn.exec(commands.join(' && '), (err, stream) => {
+                if (err) return reject(err);
+
+                let output = '';
+                let error = '';
+
+                stream.on('data', data => {
+                    output += data.toString();
+                });
+
+                stream.stderr.on('data', data => {
+                    error += data.toString();
+                });
+
+                // change: check exit code
+                stream.on('close', (code) => {
+                    conn.end();
+
+                    if (code === 0) {
+                        resolve({ output, error });
+                    } else {
+                        reject(new Error(error || `Command failed with code ${code}`));
+                    }
+                });
+            });
+        });
+
+        // small safe wrapper
+        conn.on('error', (err) => reject(err));
+
+        conn.connect({
+            host: process.env.EC2_HOST,
+            username: process.env.EC2_USER,
+            privateKey: fs.readFileSync(process.env.EC2_SSH_KEY_PATH)
+        });
+    });
+}
+
+
+export { Tool, ToolRegistry, EmailSenderTool, WhatsAppSenderTool, WebSearchTool, TerminalTool, DeployTool };
