@@ -65,7 +65,7 @@ class Planner {
     `;
         }
 
-        // const plan = await Planner.callLLM(prompt);
+        const plan = await Planner.callLLM(prompt);
         // dummy for development
         // const plan = {
         //     steps: [
@@ -76,11 +76,11 @@ class Planner {
         //         { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
         //     ]
         // }
-        const plan = {
-            steps: [
-                { tool: 'deploy_repo', input: { repoUrl: 'https://github.com/vansh-choudhary01/RAG-Optimization' }, as: 'deploy1' }
-            ]
-        };
+        // const plan = {
+        //     steps: [
+        //         { tool: 'deploy_repo', input: { repoUrl: 'https://github.com/vansh-choudhary01/RAG-Optimization' }, as: 'deploy1' }
+        //     ]
+        // };
         console.log("PLAN:");
         console.log(plan);
         return plan || null;

@@ -286,7 +286,7 @@ EXPOSE 3000
 CMD ${JSON.stringify(startCommand.split(' '))}
 ' > Dockerfile`,
                 `docker build -t ${appName} .`,
-                `docker run -d --name ${appName} -p ${port}:3000 ${appName}`
+                `docker run -d --name ${appName} -p ${port}:4000 ${appName}`
             ];
 
             const deployResult = await runSSHCommands(dockerCommands);
@@ -346,11 +346,6 @@ function runSSHCommands(commands) {
 
         // small safe wrapper
         conn.on('error', (err) => reject(err));
-
-        console.log("EC2_HOST:", process.env.EC2_HOST);
-        console.log("EC2_USER:", process.env.EC2_USER);
-        console.log("EC2_SSH_KEY_PATH:", process.env.EC2_SSH_KEY_PATH);
-        console.log("SSH KEY EXISTS:", fs.existsSync(process.env.EC2_SSH_KEY_PATH));
         conn.connect({
             host: process.env.EC2_HOST,
             username: process.env.EC2_USER,
