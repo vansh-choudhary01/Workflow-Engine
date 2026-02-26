@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js",
-    "dev": "nodemon index.js"
+    "start": "node index.js",
+    "dev": "nodemon -L index.js"
   },
   "type": "module",
   "keywords": [],
@@ -22,5 +22,8 @@
     "openai": "^6.22.0",
     "serpapi": "^2.2.1",
     "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

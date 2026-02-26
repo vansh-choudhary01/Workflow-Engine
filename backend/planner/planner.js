@@ -10,15 +10,15 @@ class Planner {
         userRequest = userRequest.toLowerCase();
 
         let prompt = '';
-        
+
         console.log("REATTEMPT:", reattempt);
         console.log("REPHRASE:", rephrase);
 
         let toolNames;
-        if (Array.isArray(this.availableTools)) {
-            toolNames = this.availableTools.map(t => t.name).join(", ");
-        } else if (this.availableTools instanceof Map) {
-            toolNames = Array.from(this.availableTools.keys()).join(", ");
+        if (this.availableTools instanceof Map) {
+            toolNames = Array.from(this.availableTools.values()).map(t => {
+                return JSON.stringify({ name: t.name, description: t.description })
+            }).join(", ");
         }
         console.log("TOOLNAMES:", toolNames);
 
@@ -33,6 +33,7 @@ class Planner {
             { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
             { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
             { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
+            { tool: 'deploy_repo', input: { repoUrl: 'https://github.com/prince-chrismc/test-repo' }, as: 'deploy1' }
         ]}`;
         } else if (reattempt) {
             prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You previously attempted to plan a sequence of tools to execute to answer the user's request, but it failed. Here are the last outputs from your previous attempt: ${JSON.stringify(lastOutputs)}. You need to plan a new sequence of tools to execute to answer the user's request. The tools you can use are: ${toolNames}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
@@ -46,6 +47,7 @@ class Planner {
             { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
             { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
             { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
+            { tool: 'deploy_repo', input: { repoUrl: 'https://github.com/prince-chrismc/test-repo' }, as: 'deploy1' }
         ]}`;
         } else {
             prompt = `You are a helpful assistant. You are given a user request: "${userRequest}". You need to plan a sequence of tools to execute to answer the user's request. The tools you can use are: ${toolNames}. You should return a JSON plan, which is a list of steps, each of which is an object with "tool" and "input" properties. The "input" property is the input to the tool. The "tool" is the name of the tool to use. If you cannot plan a sequence of tools, return "null". You can only plan tools that you can use. Do not plan tools that you cannot use. Do not plan steps that are not in the user's request. Do not plan steps that are not in your capabilities. Return a JSON plan that is a list of steps.
@@ -58,11 +60,12 @@ class Planner {
             { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
             { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
             { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
+            { tool: 'deploy_repo', input: { repoUrl: 'https://github.com/prince-chrismc/test-repo' }, as: 'deploy1' }
         ]}
     `;
         }
 
-        const plan = await this.callLLM(prompt);
+        // const plan = await Planner.callLLM(prompt);
         // dummy for development
         // const plan = {
         //     steps: [
@@ -73,13 +76,20 @@ class Planner {
         //         { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' }
         //     ]
         // }
+        const plan = {
+            steps: [
+                { tool: 'deploy_repo', input: { repoUrl: 'https://github.com/vansh-choudhary01/RAG-Optimization' }, as: 'deploy1' }
+            ]
+        };
+        console.log("PLAN:");
+        console.log(plan);
         return plan || null;
 
         // default: do a web search
         return { steps: [{ tool: 'search', input: { query: userRequest }, as: 'search1' }] };
     }
 
-    async callLLM(prompt) {
+    static async callLLM(prompt) {
         try {
             const resp = await openai.chat.completions.create({
                 model: 'gpt-3.5-turbo',

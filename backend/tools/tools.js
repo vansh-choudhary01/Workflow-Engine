@@ -7,6 +7,7 @@ import { runWithQueue } from './terminalQueue.js';
 import fs from 'fs';
 import { Client } from 'ssh2';
 import { getNextPort } from '../utils/portManager.js';
+import { Planner } from '../planner/planner.js';
 
 
 // import { whatsapp } from 'node-whatsapp';
@@ -143,7 +144,6 @@ class TerminalTool extends Tool {
                 return { ok: false, error: 'Forbidden command' };
             }
 
-            // const result = await runTerminalCommand(cmd);
             const result = await runWithQueue(() => runInDocker(cmd));
             if (result.stderr) {
                 return { ok: false, result }
@@ -211,37 +211,101 @@ class DeployTool extends Tool {
 
     async call(input) {
         const { repoUrl, port = getNextPort() } = input;
+        console.log(input);
 
         if (!repoUrl) {
             return { ok: false, error: 'repoUrl required' };
-        } else if (!repoUrl.startsWith('https://github.com/')) {
+        }
+
+        if (!repoUrl.startsWith('https://github.com/')) {
             return { ok: false, error: 'Only GitHub repos allowed' };
         }
 
         const appName = `app-${Date.now()}`;
 
-        const commands = [
-            'mkdir -p ~/apps',
-            'cd ~/apps',
-            `git clone ${repoUrl} ${appName}`,
-            `cd ${appName}`,
-            `docker build -t ${appName} .`,
-            // change: added container name
-            `docker run -d --name ${appName} -p ${port}:3000 ${appName}`
-        ];
+        console.log(`Deploying ${repoUrl} as ${appName} on port ${port}`);
 
         try {
-            const result = await runSSHCommands(commands);
+            // Step 1: Clone repo and inspect structure
+            const inspectCommands = [
+                'mkdir -p ~/apps',
+                'cd ~/apps',
+                `git clone ${repoUrl} ${appName}`,
+                `cd ${appName}`,
+                'echo "FILES_START"',
+                'ls',
+                'echo "FILES_END"',
+                'echo "PACKAGE_START"',
+                '[ -f package.json ] && cat package.json || echo "NO_PACKAGE_JSON"',
+                'echo "PACKAGE_END"'
+            ];
+
+            const inspectResult = await runSSHCommands(inspectCommands);
+
+            console.log('Inspect result:');
+            console.log(inspectResult);
+
+            // Step 2: Ask AI how to start
+            const prompt = `
+You are a deployment assistant.
+
+Repository structure:
+${inspectResult.output}
+
+Determine how to start this Node.js project.
+
+Rules:
+- If package.json has "start" script → use "npm start"
+- If package.json has main → use "node <main>"
+- If index.js exists → use "node index.js"
+- If nothing found → return null
+
+Return JSON only:
+{ "startCommand": "npm start" }
+`;
+
+            const llmResult = await Planner.callLLM(prompt);
+
+            console.log('LLM result:');
+            console.log(llmResult);
+
+            if (!llmResult || !llmResult.startCommand) {
+                return { ok: false, error: 'Could not determine start command' };
+            }
+
+            const startCommand = llmResult.startCommand;
+
+            // Step 3: Create Dockerfile dynamically
+            const dockerCommands = [
+                `cd ~/apps/${appName}`,
+                `echo 'FROM node:18
+WORKDIR /app
+COPY . .
+RUN npm install
+EXPOSE 3000
+CMD ${JSON.stringify(startCommand.split(' '))}
+' > Dockerfile`,
+                `docker build -t ${appName} .`,
+                `docker run -d --name ${appName} -p ${port}:3000 ${appName}`
+            ];
+
+            const deployResult = await runSSHCommands(dockerCommands);
+
+            console.log('Deploy result:');
+            console.log(deployResult);
 
             return {
                 ok: true,
                 result: {
                     appName,
+                    startCommand,
                     url: `http://${process.env.EC2_HOST}:${port}`,
-                    logs: result.output,
+                    logs: deployResult.output
                 }
             };
+
         } catch (err) {
+            console.error('Deployment error:', err);
             return { ok: false, error: err.message };
         }
     }
@@ -283,6 +347,10 @@ function runSSHCommands(commands) {
         // small safe wrapper
         conn.on('error', (err) => reject(err));
 
+        console.log("EC2_HOST:", process.env.EC2_HOST);
+        console.log("EC2_USER:", process.env.EC2_USER);
+        console.log("EC2_SSH_KEY_PATH:", process.env.EC2_SSH_KEY_PATH);
+        console.log("SSH KEY EXISTS:", fs.existsSync(process.env.EC2_SSH_KEY_PATH));
         conn.connect({
             host: process.env.EC2_HOST,
             username: process.env.EC2_USER,
