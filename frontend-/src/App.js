@@ -3,7 +3,30 @@ import './App.css'
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000'
 
-function Badge ({ status }) {
+const AVAILABLE_TOOLS = [
+  {
+    name: 'send_email',
+    description: 'Send an email to a specified address with subject and body'
+  },
+  {
+    name: 'web_search',
+    description: 'Search the web for a query and return the top 3 results'
+  },
+  {
+    name: 'send_whatsapp',
+    description: 'Send a WhatsApp message to a specified phone number with message content'
+  },
+  {
+    name: 'terminal',
+    description: 'Provide and execute terminal commands (linux/mac/windows).'
+  },
+  {
+    name: 'deploy_repo',
+    description: 'Deploy a GitHub repository to preconfigured EC2 instance'
+  }
+]
+
+function Badge({ status }) {
   const map = {
     waiting_approval: 'bg-yellow-900 text-yellow-300 border border-yellow-700',
     processing: 'bg-blue-900 text-blue-300 border border-blue-700 animate-pulse',
@@ -19,7 +42,7 @@ function Badge ({ status }) {
   )
 }
 
-function Toasts ({ toasts }) {
+function Toasts({ toasts }) {
   return (
     <div className="fixed top-4 right-4 space-y-2 z-50">
       {toasts.map(t => (
@@ -29,7 +52,7 @@ function Toasts ({ toasts }) {
   )
 }
 
-export default function App () {
+export default function App() {
   const [userId, setUserId] = useState('user1')
   const [prompt, setPrompt] = useState('Plan an email to the team')
   const [workflow, setWorkflow] = useState(null)
@@ -44,6 +67,8 @@ export default function App () {
   const [rephraseText, setRephraseText] = useState('')
   const [error, setError] = useState(null)
   const [showDeploymentDocs, setShowDeploymentDocs] = useState(false)
+  const [showTools, setShowTools] = useState(false)
+  const [tools] = useState(AVAILABLE_TOOLS)
   const [envInput, setEnvInput] = useState('')
 
   const logsRef = useRef(null)
@@ -81,7 +106,7 @@ export default function App () {
         addToast('Workflow created')
         setError(null)
       } else addToast('Create failed')
-        if (data.success === false) setError(data?.message);
+      if (data.success === false) setError(data?.message);
     } catch (err) {
       console.error(err)
       addToast('Network error')
@@ -189,6 +214,7 @@ export default function App () {
             {workflow && <Badge status={workflow.status} />}
             <button onClick={() => workflow && fetchWorkflow(workflow.id)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm font-medium transition">↻ Refresh</button>
             <button onClick={() => setShowDeploymentDocs(!showDeploymentDocs)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm font-medium transition">📘 Deployment</button>
+            <button onClick={() => setShowTools(!showTools)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm font-medium transition">🧰 Tools</button>
             <label className="inline-flex items-center gap-2 text-sm cursor-pointer hover:text-slate-300 transition">
               <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="rounded" /> Auto-refresh
             </label>
@@ -296,11 +322,18 @@ export default function App () {
                 {(workflow?.steps || []).map((s, i) => (
                   <div key={i} className={`relative border-l-4 pl-4 py-3 rounded-r px-4 transition ${s.status === 'completed' ? 'border-green-500 bg-slate-700 bg-opacity-50' : s.status === 'failed' ? 'border-red-500 bg-red-900 bg-opacity-20' : s.status === 'processing' ? 'border-blue-500 bg-blue-900 bg-opacity-20 animate-pulse' : 'border-slate-600 bg-slate-700 bg-opacity-30'}`}>
                     <div className={`absolute -left-3 w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold transition ${s.status === 'completed' ? 'bg-green-500 border-slate-800 text-white' : s.status === 'failed' ? 'bg-red-500 border-slate-800 text-white' : s.status === 'processing' ? 'bg-blue-500 border-slate-800 text-white animate-pulse' : 'bg-slate-600 border-slate-500 text-slate-300'}`}>{i + 1}</div>
-                    
+
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <h5 className="font-bold text-slate-100 text-base mb-3">{s.tool}</h5>
-                        
+                        <div className="flex items-center gap-2 mb-3">
+                          <h5 className="font-bold text-slate-100 text-base">{s.tool}</h5>
+                          {s.tool === 'deploy_repo' && (
+                            <button onClick={() => setShowDeploymentDocs(true)} className="px-2 py-1 text-xs bg-cyan-900 hover:bg-cyan-800 text-cyan-300 border border-cyan-700 rounded transition" title="View deployment documentation">
+                              📘 Docs
+                            </button>
+                          )}
+                        </div>
+
                         {/* Input Parameters */}
                         {s.input && (
                           <div className="bg-slate-900 bg-opacity-30 rounded p-3 mb-3 border border-slate-600">
@@ -308,7 +341,7 @@ export default function App () {
                             <div className="text-sm text-slate-200">{renderInputParams(s.input)}</div>
                           </div>
                         )}
-                        
+
                         {/* Result */}
                         {s.result && (
                           <div className="bg-green-900 bg-opacity-20 rounded p-3 mb-3 border border-green-700">
@@ -316,7 +349,7 @@ export default function App () {
                             <div className="text-sm text-slate-100">{renderInputParams(s.result)}</div>
                           </div>
                         )}
-                        
+
                         {/* Error */}
                         {s.error && (
                           <div className="bg-red-900 bg-opacity-30 rounded p-3 border border-red-600">
@@ -325,7 +358,7 @@ export default function App () {
                           </div>
                         )}
                       </div>
-                      
+
                       <span className={`text-xs font-bold px-2 py-1 rounded whitespace-nowrap flex-shrink-0 ${s.status === 'completed' ? 'bg-green-900 text-green-300' : s.status === 'failed' ? 'bg-red-900 text-red-300' : s.status === 'processing' ? 'bg-blue-900 text-blue-300' : 'bg-slate-700 text-slate-300'}`}>{s.status}</span>
                     </div>
                   </div>
@@ -333,16 +366,16 @@ export default function App () {
               </div>
             </div>
 
-            
+
             {/* Environment Variables - Show if deploy_repo present */}
             {hasDeployRepo(workflow?.steps) && workflow?.status === 'waiting_approval' && (
               <div className="bg-slate-800 rounded shadow border border-slate-700 p-5">
                 <h4 className="font-semibold mb-3 text-cyan-400 text-lg">🔧 Environment Variables</h4>
                 <p className="text-sm text-slate-300 mb-3">Enter environment variables for deployment (KEY=VALUE, one per line):</p>
-                <textarea 
-                  value={envInput} 
-                  onChange={e => setEnvInput(e.target.value)} 
-                  placeholder="PORT=4000&#10;DATABASE_URL=mongodb://localhost&#10;SECRET_KEY=your_secret" 
+                <textarea
+                  value={envInput}
+                  onChange={e => setEnvInput(e.target.value)}
+                  placeholder="PORT=4000&#10;DATABASE_URL=mongodb://localhost&#10;SECRET_KEY=your_secret"
                   className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 mb-3 h-24 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none transition resize-none font-mono text-sm"
                 />
               </div>
@@ -353,15 +386,15 @@ export default function App () {
               <div className="bg-gradient-to-r from-purple-900 from-20% to-blue-900 to-80% rounded shadow border border-purple-700 p-5">
                 <h4 className="font-semibold mb-3 text-purple-300 text-lg">✨ Rephrase Workflow</h4>
                 <p className="text-sm text-slate-300 mb-3">Enter a prompt to regenerate and rephrase the workflow steps:</p>
-                <textarea 
-                  value={rephraseText} 
-                  onChange={e => setRephraseText(e.target.value)} 
-                  placeholder="e.g., Make it more concise and professional..." 
+                <textarea
+                  value={rephraseText}
+                  onChange={e => setRephraseText(e.target.value)}
+                  placeholder="e.g., Make it more concise and professional..."
                   className="w-full bg-slate-700 border border-purple-700 rounded px-3 py-2 mb-3 h-20 text-slate-100 placeholder-slate-500 focus:border-purple-500 focus:outline-none transition resize-none"
                 />
-                <button 
-                  onClick={handleRephrase} 
-                  disabled={loading || !rephraseText.trim()} 
+                <button
+                  onClick={handleRephrase}
+                  disabled={loading || !rephraseText.trim()}
                   className={`py-2 px-4 rounded font-semibold text-sm transition ${loading || !rephraseText.trim() ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
                 >
                   {loading ? '⏳ Rephrasing...' : '🔄 Rephrase Steps'}
@@ -384,7 +417,7 @@ export default function App () {
                   <label className="inline-flex items-center gap-2 text-sm cursor-pointer text-slate-300 hover:text-slate-100 transition"><input type="checkbox" checked={autoFollow} onChange={e => setAutoFollow(e.target.checked)} className="rounded" /> Follow</label>
                 </div>
               </div>
-              <div ref={logsRef} className="bg-black bg-opacity-50 text-slate-100 p-4 rounded border border-slate-700 flex-1 overflow-auto font-mono text-xs space-y-1 max-h-80"> 
+              <div ref={logsRef} className="bg-black bg-opacity-50 text-slate-100 p-4 rounded border border-slate-700 flex-1 overflow-auto font-mono text-xs space-y-1 max-h-80">
                 {filteredLogs.length === 0 && <div className="text-slate-500 py-8 text-center italic">No activity yet</div>}
                 {filteredLogs.map((l, i) => {
                   const icon = l.status === 'error' ? '✕' : l.status === 'success' ? '✓' : 'ℹ'
@@ -412,6 +445,45 @@ export default function App () {
           </div>
         </div>
       </div>
+
+      {/* Tools documentation overlay */}
+      {showTools && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-6">
+          <div className="bg-slate-800 rounded shadow-lg border border-slate-700 max-w-xl w-full p-6 overflow-auto max-h-full">
+            <div className="flex items-start justify-between mb-4">
+              <h2 className="text-2xl font-bold text-cyan-400">🧰 Available Tools</h2>
+              <button onClick={() => setShowTools(false)} className="text-slate-400 hover:text-slate-200 text-xl">✕</button>
+            </div>
+            <div className="text-slate-200 space-y-4 text-sm">
+              <p>You can include these tools in your workflow prompt or steps. Each tool has a specific purpose; use them to extend the engine's capabilities.</p>
+              {tools.length === 0 && <p className="italic text-slate-500">Loading or no tools available.</p>}
+              {tools.map(t => {
+                const isDisconnected = t.name === 'send_whatsapp';
+                return (
+                  <div key={t.name} className={`border rounded p-3 ${isDisconnected ? 'border-slate-700 bg-slate-900 bg-opacity-50' : 'border-slate-600'}`}>
+                    <div className="flex items-center gap-2">
+                      <div className="font-semibold text-cyan-300">{t.name}</div>
+                      {isDisconnected && <span className="text-xs px-2 py-1 rounded bg-yellow-900 text-yellow-300 border border-yellow-700">Disconnected (Dummy)</span>}
+                      {t.name === 'deploy_repo' && (
+                        <button onClick={() => { setShowDeploymentDocs(true); setShowTools(false); }} className="px-2 py-1 text-xs bg-cyan-900 hover:bg-cyan-800 text-cyan-300 border border-cyan-700 rounded transition" title="View deployment documentation">
+                          📘 Docs
+                        </button>
+                      )}
+                    </div>
+                    <div className={`text-sm ${isDisconnected ? 'text-slate-400' : 'text-slate-300'}`}>{t.description}</div>
+                    {isDisconnected && <p className="text-xs text-slate-500 mt-2">⚠ WhatsApp API integration not yet available. Currently returns dummy responses.</p>}
+                  </div>
+                );
+              })}
+              <div className="mt-4">
+                <h3 className="font-semibold text-blue-400">📄 More documentation</h3>
+                <p className="text-slate-300">Refer to the source code under <code className="bg-black bg-opacity-30 px-1 rounded">/backend/tools/tools.js</code> for implementation details. Use prompts like <code className="bg-black bg-opacity-30 px-1 rounded">"use the send_email tool to send a mail"</code> or <code className="bg-black bg-opacity-30 px-1 rounded">"run a terminal command"</code>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toasts toasts={toasts} />
     </div>
   )
