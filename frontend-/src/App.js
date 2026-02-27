@@ -23,7 +23,7 @@ const AVAILABLE_TOOLS = [
   },
   {
     name: 'deploy_repo',
-    description: 'Deploy a GitHub repository to preconfigured EC2 instance'
+    description: 'Deploy a GitHub repository to preconfigured EC2 instance (prompt: "deploy - https://github.com/owner/repo"). Repository must be Node.js, start on port 4000, package.json in root.'
   }
 ]
 
@@ -241,41 +241,23 @@ export default function App() {
               <button onClick={() => setShowDeploymentDocs(false)} className="text-slate-400 hover:text-slate-200 text-xl">✕</button>
             </div>
 
-            <div className="space-y-6 text-slate-200">
-              {/* Requirement 1 */}
-              <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">1. Node.js Project Only</h3>
-                <p className="text-sm mb-3">This is a Node.js project. Deployment must use Node.js runtime only.</p>
-                <ul className="text-sm space-y-2 ml-4">
-                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Ensure your deployment environment supports Node.js runtime</li>
-                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Do not attempt to deploy as a Python, Go, Java, or other language runtime project</li>
-                </ul>
-              </div>
+            <div className="space-y-4 text-slate-200 mb-6">
+              <ol className="text-sm list-decimal ml-4 space-y-2">
+                <li>Add a step or prompt such as <code className="bg-black bg-opacity-30 px-1 rounded">deploy - https://github.com/owner/repo</code>.</li>
+                <li>Repo must be a Node.js project with <code className="bg-black bg-opacity-30 px-1 rounded">package.json</code> in root.</li>
+                <li>Application should start on port <code className="bg-black bg-opacity-30 px-1 rounded">4000</code>.</li>
+              </ol>
+              <p className="text-sm">Example repo: <a href="https://github.com/vansh-choudhary01/Workflow-test" target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline">vansh-choudhary01/Workflow-test</a></p>
+            </div>
 
-              {/* Requirement 2 */}
-              <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
-                <h3 className="text-lg font-semibold text-blue-400 mb-2">2. Port 4000 Requirement</h3>
-                <p className="text-sm mb-3">The backend server <span className="font-bold text-red-300">MUST</span> run on port <span className="font-bold text-cyan-300">4000</span>.</p>
-                <ul className="text-sm space-y-2 ml-4">
-                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Update the <code className="bg-black bg-opacity-30 px-2 py-1 rounded text-yellow-300">.env</code> file with <code className="bg-black bg-opacity-30 px-2 py-1 rounded text-yellow-300">PORT=4000</code></li>
-                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Ensure port 4000 is open and accessible in your deployment environment</li>
-                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Firewall rules and network policies must allow incoming traffic on port 4000</li>
-                </ul>
-              </div>
-
-              {/* Environment Configuration */}
-              <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
-                <h3 className="text-lg font-semibold text-cyan-400 mb-3">⚙ Node.js Environment Configuration</h3>
-                <p className="text-sm mb-3">Set these environment variables in your Node.js deployment:</p>
-                <div className="bg-black bg-opacity-50 p-3 rounded border border-slate-700 font-mono text-xs text-slate-100 space-y-1">
-                  <div><span className="text-green-400"># .env configuration for Node.js</span></div>
-                  <div><span className="text-yellow-300">PORT</span><span className="text-slate-400">=</span><span className="text-cyan-300">4000</span></div>
-                  <div><span className="text-yellow-300">DBURI</span><span className="text-slate-400">=</span><span className="text-cyan-300">mongodb+srv://user:pass@cluster.mongodb.net/workflow-engine</span></div>
-                </div>
-              </div>
-
-              <div className="bg-blue-900 bg-opacity-20 border border-blue-700 rounded p-3">
-                <p className="text-sm text-blue-300"><span className="font-bold">⚠ Important:</span> Do NOT change the port from 4000 after deployment. All requests will fail if the port is different.</p>
+            {/* Environment Configuration */}
+            <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
+              <h3 className="text-lg font-semibold text-cyan-400 mb-3">⚙ Node.js Environment Configuration</h3>
+              <p className="text-sm mb-3">Set these types of environment variables in your <code className="bg-black bg-opacity-30 px-1 rounded">.env</code> file. Enter them in the <code className="bg-black bg-opacity-30 px-1 rounded">Environment Variables</code> section of the deployment form.</p>
+              <div className="bg-black bg-opacity-50 p-3 rounded border border-slate-700 font-mono text-xs text-slate-100 space-y-1">
+                <div><span className="text-green-400"># .env configuration for Node.js</span></div>
+                <div><span className="text-yellow-300">PORT</span><span className="text-slate-400">=</span><span className="text-cyan-300">4000</span></div>
+                <div><span className="text-yellow-300">DBURI</span><span className="text-slate-400">=</span><span className="text-cyan-300">mongodb+srv://user:pass@cluster.mongodb.net/workflow-engine</span></div>
               </div>
             </div>
           </div>
