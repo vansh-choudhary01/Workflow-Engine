@@ -53,13 +53,12 @@ function Toasts({ toasts }) {
 }
 
 export default function App() {
-  const [userId, setUserId] = useState('user1')
+  const [userId] = useState('user1')
   const [prompt, setPrompt] = useState('Plan an email to the team')
   const [workflow, setWorkflow] = useState(null)
   const [loading, setLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [autoFollow, setAutoFollow] = useState(true)
-  const [terminalMode, setTerminalMode] = useState(false)
   const [logFilter, setLogFilter] = useState('all')
   const [logSearch, setLogSearch] = useState('')
   const [toasts, setToasts] = useState([])
@@ -134,9 +133,8 @@ export default function App() {
   }, [workflow, autoRefresh])
 
   useEffect(() => {
-    if (!logsRef.current || !workflow) return
+    if (!logsRef.current || !workflow?.logs || !autoFollow) return
     const el = logsRef.current
-    if (!autoFollow) return
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [workflow?.logs, autoFollow])
 
