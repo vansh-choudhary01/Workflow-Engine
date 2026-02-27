@@ -5,7 +5,7 @@ class Executor {
         this.timeoutMs = opts.timeoutMs || 15000;
     }
 
-    async executePlan(userId, steps) {
+    async executePlan(userId, steps, context = {}) {
         const state = {};
         for (const step of steps || []) {
             const tool = this.registry?.get(step.tool);
@@ -23,7 +23,7 @@ class Executor {
             let out = null;
             while (attempt <= this.maxRetries) {
                 try {
-                    out = await this._callWithTimeout(tool, input, this.timeoutMs);
+                    out = await this._callWithTimeout(tool, input, context, this.timeoutMs);
                     if (out && out.ok) break;
                     attempt++;
                     if (attempt > this.maxRetries) break;
@@ -65,7 +65,7 @@ class Executor {
         return rendered;
     }
 
-    _callWithTimeout(tool, input, timeoutMs) {
+    _callWithTimeout(tool, input, context, timeoutMs) {
         return new Promise((resolve, reject) => {
             let finished = false;
             const timer = setTimeout(() => {
@@ -75,7 +75,7 @@ class Executor {
                 }
             }, timeoutMs);
 
-            tool.call(input)
+            tool.call(input, context)
                 .then(res => {
                     if (finished) return;
                     finished = true;

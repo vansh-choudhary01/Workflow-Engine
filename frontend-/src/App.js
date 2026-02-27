@@ -43,6 +43,8 @@ export default function App () {
   const [promptChars, setPromptChars] = useState(0)
   const [rephraseText, setRephraseText] = useState('')
   const [error, setError] = useState(null)
+  const [showDeploymentDocs, setShowDeploymentDocs] = useState(false)
+  const [envInput, setEnvInput] = useState('')
 
   const logsRef = useRef(null)
   const nextToastId = useRef(1)
@@ -135,6 +137,23 @@ export default function App () {
     setRephraseText('')
   }
 
+  const parseEnvInput = (envStr) => {
+    const env = {}
+    envStr.split('\n').forEach(line => {
+      line = line.trim()
+      if (!line || line.startsWith('#')) return
+      const [key, ...valueParts] = line.split('=')
+      if (key && valueParts.length > 0) {
+        env[key.trim()] = valueParts.join('=').trim()
+      }
+    })
+    return env
+  }
+
+  const hasDeployRepo = (steps) => {
+    return (steps || []).some(s => s.tool === 'deploy_repo')
+  }
+
   const filteredLogs = (workflow?.logs || []).filter(l => (logFilter === 'all' || l.status === logFilter) && (!logSearch || JSON.stringify(l).toLowerCase().includes(logSearch.toLowerCase())))
 
   const renderInputParams = (input) => {
@@ -169,6 +188,7 @@ export default function App () {
           <div className="flex items-center gap-3">
             {workflow && <Badge status={workflow.status} />}
             <button onClick={() => workflow && fetchWorkflow(workflow.id)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm font-medium transition">↻ Refresh</button>
+            <button onClick={() => setShowDeploymentDocs(!showDeploymentDocs)} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm font-medium transition">📘 Deployment</button>
             <label className="inline-flex items-center gap-2 text-sm cursor-pointer hover:text-slate-300 transition">
               <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="rounded" /> Auto-refresh
             </label>
@@ -188,15 +208,59 @@ export default function App () {
           </div>
         )}
 
+        {/* Deployment Documentation */}
+        {showDeploymentDocs && (
+          <div className="mb-6 bg-gradient-to-r from-slate-800 to-slate-700 border border-cyan-700 rounded p-6">
+            <div className="flex items-start justify-between mb-4">
+              <h2 className="text-2xl font-bold text-cyan-400">📘 Deployment Guide</h2>
+              <button onClick={() => setShowDeploymentDocs(false)} className="text-slate-400 hover:text-slate-200 text-xl">✕</button>
+            </div>
+
+            <div className="space-y-6 text-slate-200">
+              {/* Requirement 1 */}
+              <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
+                <h3 className="text-lg font-semibold text-blue-400 mb-2">1. Node.js Project Only</h3>
+                <p className="text-sm mb-3">This is a Node.js project. Deployment must use Node.js runtime only.</p>
+                <ul className="text-sm space-y-2 ml-4">
+                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Ensure your deployment environment supports Node.js runtime</li>
+                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Do not attempt to deploy as a Python, Go, Java, or other language runtime project</li>
+                </ul>
+              </div>
+
+              {/* Requirement 2 */}
+              <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
+                <h3 className="text-lg font-semibold text-blue-400 mb-2">2. Port 4000 Requirement</h3>
+                <p className="text-sm mb-3">The backend server <span className="font-bold text-red-300">MUST</span> run on port <span className="font-bold text-cyan-300">4000</span>.</p>
+                <ul className="text-sm space-y-2 ml-4">
+                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Update the <code className="bg-black bg-opacity-30 px-2 py-1 rounded text-yellow-300">.env</code> file with <code className="bg-black bg-opacity-30 px-2 py-1 rounded text-yellow-300">PORT=4000</code></li>
+                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Ensure port 4000 is open and accessible in your deployment environment</li>
+                  <li className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span> Firewall rules and network policies must allow incoming traffic on port 4000</li>
+                </ul>
+              </div>
+
+              {/* Environment Configuration */}
+              <div className="bg-slate-900 bg-opacity-50 rounded p-4 border border-slate-600">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-3">⚙ Node.js Environment Configuration</h3>
+                <p className="text-sm mb-3">Set these environment variables in your Node.js deployment:</p>
+                <div className="bg-black bg-opacity-50 p-3 rounded border border-slate-700 font-mono text-xs text-slate-100 space-y-1">
+                  <div><span className="text-green-400"># .env configuration for Node.js</span></div>
+                  <div><span className="text-yellow-300">PORT</span><span className="text-slate-400">=</span><span className="text-cyan-300">4000</span></div>
+                  <div><span className="text-yellow-300">DBURI</span><span className="text-slate-400">=</span><span className="text-cyan-300">mongodb+srv://user:pass@cluster.mongodb.net/workflow-engine</span></div>
+                </div>
+              </div>
+
+              <div className="bg-blue-900 bg-opacity-20 border border-blue-700 rounded p-3">
+                <p className="text-sm text-blue-300"><span className="font-bold">⚠ Important:</span> Do NOT change the port from 4000 after deployment. All requests will fail if the port is different.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Create Panel */}
           <div className="lg:col-span-1 bg-slate-800 rounded shadow border border-slate-700 p-5">
             <h2 className="text-lg font-semibold mb-4 text-blue-400">⚙ New Workflow</h2>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-slate-400 mb-2 font-medium">User ID</label>
-                <input className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none transition" placeholder="user@example.com" value={userId} onChange={e => setUserId(e.target.value)} />
-              </div>
               <div>
                 <label className="block text-sm text-slate-400 mb-2 font-medium">Prompt <span className="text-xs text-slate-500">({promptChars}/1000)</span></label>
                 <textarea className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none transition h-24 resize-none" maxLength={1000} placeholder="Describe the workflow..." value={prompt} onChange={e => setPrompt(e.target.value)} />
@@ -217,7 +281,7 @@ export default function App () {
               </div>
               <div className="text-right">
                 <p className="text-sm text-slate-400">Created</p>
-                <p className="font-medium text-slate-100">{workflow ? new Date(workflow.createdAt || Date.now()).toLocaleString() : '—'}</p>
+                <p className="font-medium text-slate-100">{workflow && workflow.createdAt ? new Date(workflow.createdAt).toLocaleString() : '—'}</p>
               </div>
             </div>
 
@@ -268,6 +332,21 @@ export default function App () {
                 ))}
               </div>
             </div>
+
+            
+            {/* Environment Variables - Show if deploy_repo present */}
+            {hasDeployRepo(workflow?.steps) && workflow?.status === 'waiting_approval' && (
+              <div className="bg-slate-800 rounded shadow border border-slate-700 p-5">
+                <h4 className="font-semibold mb-3 text-cyan-400 text-lg">🔧 Environment Variables</h4>
+                <p className="text-sm text-slate-300 mb-3">Enter environment variables for deployment (KEY=VALUE, one per line):</p>
+                <textarea 
+                  value={envInput} 
+                  onChange={e => setEnvInput(e.target.value)} 
+                  placeholder="PORT=4000&#10;DATABASE_URL=mongodb://localhost&#10;SECRET_KEY=your_secret" 
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 mb-3 h-24 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none transition resize-none font-mono text-sm"
+                />
+              </div>
+            )}
 
             {/* Rephrase Section - Visible when waiting_approval */}
             {workflow?.status === 'waiting_approval' && (
@@ -323,7 +402,10 @@ export default function App () {
 
             {/* Action Panel */}
             <div className="sticky bottom-6 flex gap-3">
-              <button onClick={() => postAction('approve')} disabled={!workflow || workflow.status !== 'waiting_approval'} className={`flex-1 py-3 rounded font-semibold transition text-white ${(!workflow || workflow.status !== 'waiting_approval') ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-lg'}`}>✓ Approve & Execute</button>
+              <button onClick={() => {
+                const env = hasDeployRepo(workflow?.steps) ? parseEnvInput(envInput) : undefined
+                postAction('approve', env ? { env } : {})
+              }} disabled={!workflow || workflow.status !== 'waiting_approval'} className={`flex-1 py-3 rounded font-semibold transition text-white ${(!workflow || workflow.status !== 'waiting_approval') ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-lg'}`}>✓ Approve & Execute</button>
               <button onClick={() => postAction('reject')} disabled={!workflow || workflow.status !== 'waiting_approval'} className={`flex-1 py-3 rounded font-semibold transition text-white ${(!workflow || workflow.status !== 'waiting_approval') ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 shadow-lg'}`}>✕ Reject</button>
               <button onClick={() => workflow && fetchWorkflow(workflow.id)} className="py-3 px-6 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 font-semibold transition text-slate-100">↻ Refresh</button>
             </div>

@@ -209,8 +209,9 @@ class DeployTool extends Tool {
         super('deploy_repo', 'Deploy a GitHub repository to preconfigured EC2 instance');
     }
 
-    async call(input) {
+    async call(input, context = {}) {
         const { repoUrl, port = getNextPort() } = input;
+        const { env } = context;
         console.log(input);
 
         if (!repoUrl) {
@@ -232,6 +233,7 @@ class DeployTool extends Tool {
                 'cd ~/apps',
                 `git clone ${repoUrl} ${appName}`,
                 `cd ${appName}`,
+                `cd backend || true`, // try to cd into backend if exists
                 'echo "FILES_START"',
                 'ls',
                 'echo "FILES_END"',
@@ -277,17 +279,32 @@ Return JSON only:
 
             // Step 3: Create Dockerfile dynamically
             const dockerCommands = [
-                `cd ~/apps/${appName}`,
-                `echo 'FROM node:18
+                `cd ~/apps/${appName}`
+            ];
+
+            // Create .env file if env provided
+            if (env && Object.keys(env).length > 0) {
+                const envLines = Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\\n');
+                dockerCommands.push(`echo -e '${envLines}' > .env`);
+            }
+
+            dockerCommands.push(
+                `echo 'FROM node:20
 WORKDIR /app
 COPY . .
 RUN npm install
 EXPOSE 3000
 CMD ${JSON.stringify(startCommand.split(' '))}
 ' > Dockerfile`,
-                `docker build -t ${appName} .`,
-                `docker run -d --name ${appName} -p ${port}:4000 ${appName}`
-            ];
+                `docker build -t ${appName} .`
+            );
+
+            // Add env-file flag if env provided
+            const dockerRunCmd = env && Object.keys(env).length > 0 
+                ? `docker run -d --name ${appName} -p ${port}:4000 --env-file .env ${appName}`
+                : `docker run -d --name ${appName} -p ${port}:4000 ${appName}`;
+            
+            dockerCommands.push(dockerRunCmd);
 
             const deployResult = await runSSHCommands(dockerCommands);
 

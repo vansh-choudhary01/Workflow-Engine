@@ -159,6 +159,9 @@ export const getWorkflow = async (req, res) => {
                 status: workflow.status,
                 steps: workflow.steps,
                 logs: workflow.logs,
+                createdAt: workflow.createdAt,
+                updatedAt: workflow.updatedAt,
+                prompt: workflow.prompt,
             }
         });
     } catch (err) {
