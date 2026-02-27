@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000'
+console.log('Using API base URL:', API_BASE)
 
 const AVAILABLE_TOOLS = [
   {
