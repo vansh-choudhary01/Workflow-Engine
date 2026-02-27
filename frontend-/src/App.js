@@ -94,7 +94,7 @@ export default function App() {
     if (!userId || !prompt) return addToast('User ID and prompt required')
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/workflow`, {
+      const res = await fetch(`/api/workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, prompt })
@@ -115,7 +115,7 @@ export default function App() {
   const fetchWorkflow = async (id) => {
     if (!id) return
     try {
-      const res = await fetch(`${API_BASE}/api/workflow/${id}`)
+      const res = await fetch(`/api/workflow/${id}`)
       const data = await res.json()
       if (data.success) {
         setWorkflow({ id: data.data.workflowId, status: data.data.status, steps: data.data.steps || [], logs: data.data.logs || [], createdAt: data.data.createdAt, error: data.data?.error || null })
@@ -142,7 +142,7 @@ export default function App() {
     if (!workflow) return
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/workflow/${workflow.id}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: Object.keys(body).length ? JSON.stringify(body) : undefined })
+      const res = await fetch(`/api/workflow/${workflow.id}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: Object.keys(body).length ? JSON.stringify(body) : undefined })
       const data = await res.json()
       if (data.success || (data.success === false && action === 'reject')) {
         const status = data.data?.status || (data.success ? data.data.status : 'rejected')
