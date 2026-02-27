@@ -233,7 +233,6 @@ class DeployTool extends Tool {
                 'cd ~/apps',
                 `git clone ${repoUrl} ${appName}`,
                 `cd ${appName}`,
-                `cd backend || true`, // try to cd into backend if exists
                 'echo "FILES_START"',
                 'ls',
                 'echo "FILES_END"',
@@ -291,8 +290,9 @@ Return JSON only:
             dockerCommands.push(
                 `echo 'FROM node:20
 WORKDIR /app
-COPY . .
+COPY package*.json ./
 RUN npm install
+COPY . .
 EXPOSE 3000
 CMD ${JSON.stringify(startCommand.split(' '))}
 ' > Dockerfile`,

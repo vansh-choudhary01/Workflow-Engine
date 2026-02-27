@@ -80,6 +80,7 @@ export const rephraseWorkflowSteps = async (req, res) => {
 export const approveWorkflow = async (req, res) => {
     try {
         const { id } = req.params;
+        const { env } = req.body;
         const workflow = await Workflow.findById(id);
         if (!workflow) {
             return res.status(404).json({ success: false, message: 'Workflow not found' });
@@ -94,7 +95,7 @@ export const approveWorkflow = async (req, res) => {
         workflow.logs.push({ status: 'info', message: 'Workflow execution started', timestamp: Date.now() });
         await workflow.save();
 
-        const exicution = await executor.executePlan(workflow.userId, workflow.steps);
+        const exicution = await executor.executePlan(workflow.userId, workflow.steps, { env });
         if (exicution.ok === false) {
             workflow.status = 'failed';
             workflow.logs.push({ status: 'error', message: 'Workflow execution failed', timestamp: Date.now() });
