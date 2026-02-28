@@ -146,6 +146,7 @@ export default function App() {
         setWorkflow(prev => ({ ...prev, status, steps: data.data?.steps || prev.steps, logs: data.data?.logs || prev.logs, error: data.data?.error || null }));
         addToast(action === 'approve' ? 'Execution started' : action === 'reject' ? 'Workflow rejected' : action === 'rephrase' ? 'Workflow rephrased' : 'Updated');
         setError(null);
+        setEnvInput('')
       } else addToast('Action failed')
       if (data.success === false) setError(data?.message);
     } catch (err) { console.error(err); addToast('Network error') } finally { setLoading(false) }
