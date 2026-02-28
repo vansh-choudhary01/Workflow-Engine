@@ -18,10 +18,6 @@ const AVAILABLE_TOOLS = [
     description: 'Send a WhatsApp message to a specified phone number with message content'
   },
   {
-    name: 'terminal',
-    description: 'Provide and execute terminal commands (linux/mac/windows).'
-  },
-  {
     name: 'deploy_repo',
     description: 'Deploy a GitHub repository to preconfigured EC2 instance (prompt: "deploy - https://github.com/owner/repo"). Repository must be Node.js, start on port 4000, package.json in root.'
   }
@@ -458,7 +454,7 @@ export default function App() {
               })}
               <div className="mt-4">
                 <h3 className="font-semibold text-blue-400">📄 More documentation</h3>
-                <p className="text-slate-300">Refer to the source code under <code className="bg-black bg-opacity-30 px-1 rounded">/backend/tools/tools.js</code> for implementation details. Use prompts like <code className="bg-black bg-opacity-30 px-1 rounded">"use the send_email tool to send a mail"</code> or <code className="bg-black bg-opacity-30 px-1 rounded">"run a terminal command"</code>.</p>
+                <p className="text-slate-300">Refer to the source code under <code className="bg-black bg-opacity-30 px-1 rounded">/backend/tools/tools.js</code> for implementation details. Use prompts like <code className="bg-black bg-opacity-30 px-1 rounded">"use the send_email tool to send a mail"</code> or <code className="bg-black bg-opacity-30 px-1 rounded">"run a web search for 'what to pack for a trip'"</code> to include tools in your prompt.</p>
               </div>
             </div>
           </div>

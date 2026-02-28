@@ -124,86 +124,6 @@ class WhatsAppSenderTool extends Tool {
     }
 }
 
-// 5) Terminal Tool: execute terminal commands (use with caution)
-
-const forbidden = ['rm', 'sudo', 'shutdown', 'reboot'];
-function validateCmd(cmd) {
-    return !forbidden.some(f => cmd.includes(f));
-}
-
-class TerminalTool extends Tool {
-    constructor() {
-        super('terminal', 'Provide and execute terminal commands (linux/mac/windows).');
-    }
-
-    async call(input) {
-        try {
-            const { cmd } = input;
-            if (!cmd) return { ok: false, error: 'cmd required' };
-            if (!validateCmd(cmd)) {
-                return { ok: false, error: 'Forbidden command' };
-            }
-
-            const result = await runWithQueue(() => runInDocker(cmd));
-            if (result.stderr) {
-                return { ok: false, result }
-            }
-            return { ok: true, result };
-        } catch (err) {
-            console.error('Terminal command error:', err);
-            return { ok: false, error: 'exec_error: ' + err.message };
-        }
-    }
-}
-
-function runInDocker(cmd, timeout = 10000) {
-    return new Promise((resolve, reject) => {
-        const dockerCmd = [
-            'run', // run a container
-            '--rm', // remove container after execution
-            '--network', 'none', // no internet (important)
-            '--memory', '128m', // limit memory (128MB)
-            '--cpus', '0.5', // limit CPU (0.5 cores)
-            'ubuntu', //base image
-            'bash', // command to run
-            '-c', // execute command
-            cmd,
-        ];
-
-        const child = spawn('docker', dockerCmd);
-
-        let stdout = '';
-        let stderr = '';
-
-        const timer = setTimeout(() => {
-            child.kill('SIGKILL'); // forcefully terminates a child process immediately without allowing cleanup.
-            reject(new Error('Execution timeout'));
-        }, timeout);
-
-        child.stdout.on('data', (data) => {
-            stdout += data.toString();
-        })
-
-        child.stderr.on('data', (data) => {
-            stderr += data.toString();
-        })
-
-        child.on('close', (code) => {
-            clearTimeout(timer);
-            resolve({
-                stdout,
-                stderr,
-                code
-            })
-        })
-
-        child.on('error', (err) => {
-            clearTimeout(timer);
-            reject(err);
-        })
-    })
-}
-
 class DeployTool extends Tool {
     constructor() {
         super('deploy_repo', 'Deploy a GitHub repository to preconfigured EC2 instance');
@@ -241,7 +161,7 @@ class DeployTool extends Tool {
                 'echo "PACKAGE_END"'
             ];
 
-            const inspectResult = await runSSHCommands(inspectCommands);
+            const inspectResult = await runWithQueue(() => runSSHCommands(inspectCommands));
 
             console.log('Inspect result:');
             console.log(inspectResult);
@@ -372,4 +292,4 @@ function runSSHCommands(commands) {
 }
 
 
-export { Tool, ToolRegistry, EmailSenderTool, WhatsAppSenderTool, WebSearchTool, TerminalTool, DeployTool };
+export { Tool, ToolRegistry, EmailSenderTool, WhatsAppSenderTool, WebSearchTool, DeployTool };

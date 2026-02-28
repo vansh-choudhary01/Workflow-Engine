@@ -11,7 +11,6 @@ export const createWorkflow = async (req, res) => {
         //         { tool: 'web_search', input: { query: 'what is apple ?' }, as: 'search1' },
         //         { tool: 'calculator', input: { expr: '23 * (4 + 2) / 3' }, as: 'calc1' },
         //         { tool: 'db_fetch', input: { table: 'users', filter: { id: 1 } }, as: 'user1' },
-        //         { tool: 'terminal', input: { cmd: 'ls -la' }, as: 'term1' },
         //         { tool: 'send_email', input: { to: 'prince@example.com', subject: 'Planning failed', body: 'Please try again' }, as: 'email1' },
         //         { tool: 'send_whatsapp', input: { to: '+1234567890', message: 'Planning failed' }, as: 'whatsapp1' }
         //     ]
